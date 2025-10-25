@@ -50,28 +50,36 @@ class WrapperGenerator implements GeneratorInterface
         $baseNamespace = $config ? $config->getNamespace() : 'Generated\\Wrapper';
         $generationType = $config ? $config->getGenerationType() : 'object';
         
-        if ($generationType === 'object') {
-            // Generate object-oriented wrapper classes
-            $functionGroups = $this->groupFunctionsByPrefix($bindings->functions);
-            
-            foreach ($functionGroups as $groupName => $functions) {
-                $className = $this->convertGroupNameToClassName($groupName);
+        // Try to use improved generation if Methods.php exists
+        $outputPath = $config ? $config->getOutputPath() : './generated';
+        $methodsFilePath = $outputPath . '/Methods.php';
+        
+        if (file_exists($methodsFilePath)) {
+            // Use improved generation based on klitsche/ffigen output
+            $classes = $this->generateImprovedClasses($methodsFilePath, $baseNamespace, $generationType);
+        } else {
+            // Fallback to original generation
+            if ($generationType === 'object') {
+                $functionGroups = $this->groupFunctionsByPrefix($bindings->functions);
                 
-                $wrapperClass = $this->classGenerator->generateClass(
-                    $className,
-                    $baseNamespace,
-                    $functions,
-                    [],
-                    [],
-                    $generationType
-                );
-                
+                foreach ($functionGroups as $groupName => $functions) {
+                    $className = $this->convertGroupNameToClassName($groupName);
+                    
+                    $wrapperClass = $this->classGenerator->generateClass(
+                        $className,
+                        $baseNamespace,
+                        $functions,
+                        [],
+                        [],
+                        $generationType
+                    );
+                    
+                    $classes[] = $wrapperClass;
+                }
+            } else {
+                $wrapperClass = $this->generateFunctionalWrapper($bindings->functions, $baseNamespace);
                 $classes[] = $wrapperClass;
             }
-        } else {
-            // Generate functional/procedural wrapper
-            $wrapperClass = $this->generateFunctionalWrapper($bindings->functions, $baseNamespace);
-            $classes[] = $wrapperClass;
         }
 
         // Generate struct classes
@@ -820,5 +828,83 @@ class WrapperGenerator implements GeneratorInterface
             [], // No properties for functional wrapper
             []  // No constants
         );
+    }
+
+    /**
+     * Generate improved classes based on klitsche/ffigen output
+     *
+     * @param string $methodsFilePath Path to Methods.php file
+     * @param string $baseNamespace Base namespace
+     * @param string $generationType Generation type
+     * @return array<WrapperClass> Generated wrapper classes
+     */
+    private function generateImprovedClasses(string $methodsFilePath, string $baseNamespace, string $generationType): array
+    {
+        $parser = new FFIGenOutputParser();
+        $improvedGenerator = new ImprovedMethodGenerator($parser);
+        
+        // Parse klitsche/ffigen output
+        $functions = $parser->parseMethodsFile($methodsFilePath);
+        
+        if (empty($functions)) {
+            return [];
+        }
+
+        $classes = [];
+
+        if ($generationType === 'object') {
+            // Group functions semantically
+            $functionGroups = $parser->groupFunctionsBySemantics($functions);
+            
+            foreach ($functionGroups as $groupName => $functionNames) {
+                $className = $this->convertGroupNameToClassName($groupName);
+                $methods = [];
+                
+                foreach ($functionNames as $functionName) {
+                    if (isset($functions[$functionName])) {
+                        $methods[] = $improvedGenerator->generateImprovedMethod(
+                            $functionName,
+                            $functions[$functionName],
+                            $className,
+                            $generationType
+                        );
+                    }
+                }
+                
+                if (!empty($methods)) {
+                    $classes[] = new WrapperClass(
+                        $className,
+                        $baseNamespace,
+                        $methods,
+                        [], // No properties
+                        []  // No constants
+                    );
+                }
+            }
+        } else {
+            // Generate functional wrapper
+            $methods = [];
+            
+            foreach ($functions as $functionName => $functionInfo) {
+                $methods[] = $improvedGenerator->generateImprovedMethod(
+                    $functionName,
+                    $functionInfo,
+                    'Functions',
+                    $generationType
+                );
+            }
+            
+            if (!empty($methods)) {
+                $classes[] = new WrapperClass(
+                    'Functions',
+                    $baseNamespace,
+                    $methods,
+                    [],
+                    []
+                );
+            }
+        }
+
+        return $classes;
     }
 }
