@@ -17,15 +17,18 @@ class WrapperGenerator implements GeneratorInterface
     private StructGenerator $structGenerator;
     private ConstantGenerator $constantGenerator;
     private TemplateEngine $templateEngine;
+    private MethodGenerator $methodGenerator;
 
     public function __construct(
         ?ClassGenerator $classGenerator = null,
         ?StructGenerator $structGenerator = null,
         ?ConstantGenerator $constantGenerator = null,
-        ?TemplateEngine $templateEngine = null
+        ?TemplateEngine $templateEngine = null,
+        ?MethodGenerator $methodGenerator = null
     ) {
         $this->templateEngine = $templateEngine ?? new TemplateEngine();
-        $this->classGenerator = $classGenerator ?? new ClassGenerator(null, $this->templateEngine);
+        $this->methodGenerator = $methodGenerator ?? new MethodGenerator();
+        $this->classGenerator = $classGenerator ?? new ClassGenerator($this->methodGenerator, $this->templateEngine);
         $this->structGenerator = $structGenerator ?? new StructGenerator(null, $this->templateEngine);
         $this->constantGenerator = $constantGenerator ?? new ConstantGenerator($this->templateEngine);
     }
@@ -43,24 +46,31 @@ class WrapperGenerator implements GeneratorInterface
         $interfaces = [];
         $traits = [];
 
-        // Group functions by common prefixes to create logical classes
-        $functionGroups = $this->groupFunctionsByPrefix($bindings->functions);
-
         // Determine namespace to use
         $baseNamespace = $config ? $config->getNamespace() : 'Generated\\Wrapper';
+        $generationType = $config ? $config->getGenerationType() : 'object';
         
-        // Generate wrapper classes for function groups
-        foreach ($functionGroups as $groupName => $functions) {
-            $className = $this->convertGroupNameToClassName($groupName);
+        if ($generationType === 'object') {
+            // Generate object-oriented wrapper classes
+            $functionGroups = $this->groupFunctionsByPrefix($bindings->functions);
             
-            $wrapperClass = $this->classGenerator->generateClass(
-                $className,
-                $baseNamespace,
-                $functions,
-                [],
-                []
-            );
-            
+            foreach ($functionGroups as $groupName => $functions) {
+                $className = $this->convertGroupNameToClassName($groupName);
+                
+                $wrapperClass = $this->classGenerator->generateClass(
+                    $className,
+                    $baseNamespace,
+                    $functions,
+                    [],
+                    [],
+                    $generationType
+                );
+                
+                $classes[] = $wrapperClass;
+            }
+        } else {
+            // Generate functional/procedural wrapper
+            $wrapperClass = $this->generateFunctionalWrapper($bindings->functions, $baseNamespace);
             $classes[] = $wrapperClass;
         }
 
@@ -614,7 +624,8 @@ class WrapperGenerator implements GeneratorInterface
         
         // Examples section
         $content .= "## Examples\n\n";
-        $content .= $this->generateExampleUsage($generatedCode, $namespace);
+        $generationType = $config ? $config->getGenerationType() : 'object';
+        $content .= $this->generateExampleUsage($generatedCode, $namespace, $generationType);
         
         // Notes section
         $content .= "## Important Notes\n\n";
@@ -662,11 +673,24 @@ class WrapperGenerator implements GeneratorInterface
      *
      * @param GeneratedCode $generatedCode Generated code
      * @param string $namespace Namespace
+     * @param string $generationType Generation type
      * @return string Example code
      */
-    private function generateExampleUsage(GeneratedCode $generatedCode, string $namespace): string
+    private function generateExampleUsage(GeneratedCode $generatedCode, string $namespace, string $generationType = 'object'): string
     {
-        $example = "### Basic Example\n\n";
+        if ($generationType === 'functional') {
+            return $this->generateFunctionalExample($generatedCode, $namespace);
+        } else {
+            return $this->generateObjectExample($generatedCode, $namespace);
+        }
+    }
+
+    /**
+     * Generate object-oriented example
+     */
+    private function generateObjectExample(GeneratedCode $generatedCode, string $namespace): string
+    {
+        $example = "### Object-Oriented Example\n\n";
         $example .= "```php\n";
         $example .= "<?php\n";
         $example .= "require_once 'vendor/autoload.php';\n\n";
@@ -714,6 +738,41 @@ class WrapperGenerator implements GeneratorInterface
     }
 
     /**
+     * Generate functional/procedural example
+     */
+    private function generateFunctionalExample(GeneratedCode $generatedCode, string $namespace): string
+    {
+        $example = "### Functional/Procedural Example\n\n";
+        $example .= "```php\n";
+        $example .= "<?php\n";
+        $example .= "require_once 'vendor/autoload.php';\n\n";
+        $example .= "use {$namespace}\\Bootstrap;\n";
+        $example .= "use {$namespace}\\Functions;\n\n";
+        
+        $example .= "// Initialize the FFI library\n";
+        $example .= "Bootstrap::initialize();\n\n";
+        
+        $example .= "// Use C functions directly\n";
+        $example .= "\$result = Functions::uiInit(null);\n\n";
+        
+        $example .= "// Create a window using C function names\n";
+        $example .= "\$window = Functions::uiNewWindow('My Application', 800, 600, 1);\n\n";
+        
+        $example .= "// Create a button\n";
+        $example .= "\$button = Functions::uiNewButton('Click Me');\n\n";
+        
+        $example .= "// Set button text\n";
+        $example .= "Functions::uiButtonSetText(\$button, 'New Text');\n\n";
+        
+        $example .= "// Start the main loop\n";
+        $example .= "Functions::uiMain();\n";
+        
+        $example .= "```\n\n";
+        
+        return $example;
+    }
+
+    /**
      * Generate UI-specific example
      *
      * @param array $uiClasses UI classes
@@ -735,5 +794,31 @@ class WrapperGenerator implements GeneratorInterface
         $example .= "// Your UI code here...\n";
         
         return $example;
+    }
+
+    /**
+     * Generate functional/procedural wrapper
+     *
+     * @param array<\Yangweijie\CWrapper\Analyzer\FunctionSignature> $functions Functions to wrap
+     * @param string $namespace Namespace
+     * @return WrapperClass Functional wrapper class
+     */
+    private function generateFunctionalWrapper(array $functions, string $namespace): WrapperClass
+    {
+        $className = 'Functions';
+        $methods = [];
+        
+        // Generate all functions as static methods in a single class
+        foreach ($functions as $function) {
+            $methods[] = $this->methodGenerator->generateMethod($function, 'functional', $className);
+        }
+        
+        return new WrapperClass(
+            $className,
+            $namespace,
+            $methods,
+            [], // No properties for functional wrapper
+            []  // No constants
+        );
     }
 }

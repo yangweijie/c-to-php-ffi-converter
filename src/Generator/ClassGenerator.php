@@ -29,6 +29,7 @@ class ClassGenerator
      * @param array<FunctionSignature> $functions Functions to include in the class
      * @param array<StructureDefinition> $structures Structures to include as properties
      * @param array<string, mixed> $constants Constants to include in the class
+     * @param string $generationType Generation type: 'object' or 'functional'
      * @return WrapperClass Generated wrapper class
      */
     public function generateClass(
@@ -36,7 +37,8 @@ class ClassGenerator
         string $namespace,
         array $functions,
         array $structures = [],
-        array $constants = []
+        array $constants = [],
+        string $generationType = 'object'
     ): WrapperClass {
         $methods = [];
         $properties = [];
@@ -44,7 +46,7 @@ class ClassGenerator
 
         // Generate methods from functions
         foreach ($functions as $function) {
-            $methods[] = $this->methodGenerator->generateMethod($function);
+            $methods[] = $this->methodGenerator->generateMethod($function, $generationType, $className);
         }
 
         // Generate properties from structures

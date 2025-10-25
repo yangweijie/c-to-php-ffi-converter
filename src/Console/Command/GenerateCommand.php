@@ -80,6 +80,13 @@ class GenerateCommand extends Command implements CommandInterface
                 'Enable parameter validation in generated wrappers'
             )
             ->addOption(
+                'type',
+                't',
+                InputOption::VALUE_REQUIRED,
+                'Generation type: "object" for OOP classes or "functional" for procedural functions',
+                'object'
+            )
+            ->addOption(
                 'force',
                 'f',
                 InputOption::VALUE_NONE,
@@ -182,6 +189,12 @@ class GenerateCommand extends Command implements CommandInterface
             $projectConfig->setValidationConfig($validationConfig);
         }
         
+        // Handle generation type option
+        if ($input->hasParameterOption(['--type', '-t'])) {
+            $generationType = $input->getOption('type');
+            $projectConfig->setGenerationType($generationType);
+        }
+        
         return $projectConfig;
     }
 
@@ -250,6 +263,7 @@ class GenerateCommand extends Command implements CommandInterface
             ['Output Directory' => $outputDir],
             ['Namespace' => $namespace],
             ['Library File' => $libraryFile ?: 'Not specified'],
+            ['Generation Type' => ucfirst($projectConfig->getGenerationType())],
             ['Exclude Patterns' => empty($excludePatterns) ? 'None' : implode(', ', $excludePatterns)],
             ['Parameter Validation' => $validationConfig->isParameterValidationEnabled() ? 'Enabled' : 'Disabled'],
             ['Type Conversion' => $validationConfig->isTypeConversionEnabled() ? 'Enabled' : 'Disabled']

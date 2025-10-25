@@ -21,7 +21,8 @@ class ProjectConfig implements ConfigInterface
         private string $outputPath = './generated',
         private string $namespace = 'Generated\\FFI',
         private array $excludePatterns = [],
-        private ValidationConfig $validation = new ValidationConfig()
+        private ValidationConfig $validation = new ValidationConfig(),
+        private string $generationType = 'object'
     ) {
     }
 
@@ -69,6 +70,11 @@ class ProjectConfig implements ConfigInterface
         return $this->validation;
     }
 
+    public function getGenerationType(): string
+    {
+        return $this->generationType;
+    }
+
     /**
      * @param array<string> $headerFiles
      */
@@ -111,6 +117,15 @@ class ProjectConfig implements ConfigInterface
         return $this;
     }
 
+    public function setGenerationType(string $generationType): self
+    {
+        if (!in_array($generationType, ['object', 'functional'])) {
+            throw new ConfigurationException("Invalid generation type: {$generationType}. Must be 'object' or 'functional'.");
+        }
+        $this->generationType = $generationType;
+        return $this;
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -123,6 +138,7 @@ class ProjectConfig implements ConfigInterface
             'namespace' => $this->namespace,
             'excludePatterns' => $this->excludePatterns,
             'validation' => $this->validation->toArray(),
+            'generationType' => $this->generationType,
         ];
     }
 
@@ -141,7 +157,8 @@ class ProjectConfig implements ConfigInterface
             $data['outputPath'] ?? './generated',
             $data['namespace'] ?? 'Generated\\FFI',
             $data['excludePatterns'] ?? [],
-            $validation
+            $validation,
+            $data['generationType'] ?? 'object'
         );
     }
 

@@ -22,22 +22,24 @@ class MethodGenerator
      * Generate a wrapper method from a C function signature
      *
      * @param FunctionSignature $function Function signature to wrap
+     * @param string $generationType Generation type: 'object' or 'functional'
+     * @param string $className Class name for context (optional)
      * @return string Generated method code
      */
-    public function generateMethod(FunctionSignature $function): string
+    public function generateMethod(FunctionSignature $function, string $generationType = 'object', string $className = ''): string
     {
-        $methodName = $this->convertFunctionName($function->name);
+        $methodName = $this->convertFunctionName($function->name, $generationType, $className);
         $parameters = $this->generateParameters($function->parameters);
         $parameterList = $this->generateParameterList($function->parameters);
-        $returnType = $this->typeMapper->mapCTypeToPhp($function->returnType);
+        $returnType = $this->mapReturnType($function->returnType);
         $ffiCall = $this->generateFFICall($function);
 
         $code = "    /**\n";
         $code .= "     * Wrapper for {$function->name}\n";
         
-        // Add parameter documentation
+        // Add parameter documentation with improved type mapping
         foreach ($function->parameters as $param) {
-            $phpType = $this->typeMapper->mapCTypeToPhp($param['type']);
+            $phpType = $this->mapParameterType($param['type']);
             $code .= "     * @param {$phpType} \${$param['name']}\n";
         }
         
@@ -51,7 +53,15 @@ class MethodGenerator
         }
         
         $code .= "     */\n";
-        $code .= "    public function {$methodName}({$parameters})";
+        
+        // Generate method signature based on generation type
+        if ($generationType === 'functional') {
+            // For functional mode, use the original C function name and make it static
+            $code .= "    public static function {$function->name}({$parameters})";
+        } else {
+            // For object mode, use converted method name and make it static (for Bootstrap pattern)
+            $code .= "    public static function {$methodName}({$parameters})";
+        }
         
         if ($returnType !== 'void') {
             $code .= ": {$returnType}";
@@ -78,20 +88,139 @@ class MethodGenerator
      * Convert C function name to PHP method name
      *
      * @param string $functionName C function name
+     * @param string $generationType Generation type
+     * @param string $className Class name for context (optional)
      * @return string PHP method name
      */
-    private function convertFunctionName(string $functionName): string
+    private function convertFunctionName(string $functionName, string $generationType = 'object', string $className = ''): string
     {
-        // Remove common C prefixes and convert to camelCase
-        $name = preg_replace('/^[a-z]+_/', '', $functionName);
-        $parts = explode('_', $name);
-        $methodName = array_shift($parts);
-        
-        foreach ($parts as $part) {
-            $methodName .= ucfirst($part);
+        if ($generationType === 'functional') {
+            // For functional mode, keep original function name
+            return $functionName;
         }
         
-        return $methodName;
+        // For object mode, simplify method names
+        return $this->simplifyMethodName($functionName, $className);
+    }
+
+    /**
+     * Simplify method name for object-oriented classes
+     *
+     * @param string $functionName Original C function name
+     * @param string $className Class name for context
+     * @return string Simplified method name
+     */
+    private function simplifyMethodName(string $functionName, string $className): string
+    {
+        // Extract component name from class name (e.g., "UiButton" -> "Button")
+        $componentName = '';
+        if (str_starts_with($className, 'Ui')) {
+            $componentName = substr($className, 2); // Remove "Ui" prefix
+        }
+        
+        // Handle "New" functions - convert to "new"
+        if (str_contains($functionName, 'New' . $componentName)) {
+            return 'new';
+        }
+        
+        // Remove ui prefix and component name from function name
+        $simplifiedName = $functionName;
+        
+        // Remove "ui" prefix
+        if (str_starts_with($simplifiedName, 'ui')) {
+            $simplifiedName = substr($simplifiedName, 2);
+        }
+        
+        // Remove component name prefix if present
+        if ($componentName && str_starts_with($simplifiedName, $componentName)) {
+            $simplifiedName = substr($simplifiedName, strlen($componentName));
+        }
+        
+        // Convert to camelCase
+        if (empty($simplifiedName)) {
+            return 'invoke'; // Fallback for edge cases
+        }
+        
+        // Convert first letter to lowercase
+        return lcfirst($simplifiedName);
+    }
+
+    /**
+     * Map parameter type with improved logic
+     *
+     * @param string $cType C type
+     * @return string PHP type
+     */
+    private function mapParameterType(string $cType): string
+    {
+        $cleanType = trim($cType);
+        
+        // Handle specific UI object pointers (these should not be null)
+        if (str_ends_with($cleanType, '*')) {
+            $baseType = trim(substr($cleanType, 0, -1));
+            
+            // String types
+            if ($baseType === 'char' || $baseType === 'const char') {
+                return 'string';
+            }
+            
+            // UI object types - these are required parameters, not nullable
+            if (str_starts_with($baseType, 'ui') || 
+                str_starts_with($baseType, 'struct ui') ||
+                $this->typeMapper->isUIObjectType($baseType)) {
+                return '\\FFI\\CData';
+            }
+            
+            // Generic void pointer for callbacks and data
+            if ($baseType === 'void') {
+                return 'mixed';
+            }
+            
+            // Other pointers
+            return '\\FFI\\CData';
+        }
+        
+        // Use TypeMapper for basic types
+        return $this->typeMapper->mapCTypeToPhp($cType, false);
+    }
+
+    /**
+     * Map return type with improved logic
+     *
+     * @param string $cType C type
+     * @return string PHP type
+     */
+    private function mapReturnType(string $cType): string
+    {
+        $cleanType = trim($cType);
+        
+        // Handle pointer return types
+        if (str_ends_with($cleanType, '*')) {
+            $baseType = trim(substr($cleanType, 0, -1));
+            
+            // String types
+            if ($baseType === 'char' || $baseType === 'const char') {
+                return '?string'; // String returns can be null
+            }
+            
+            // UI object types - these can return null on failure
+            if (str_starts_with($baseType, 'ui') || 
+                str_starts_with($baseType, 'struct ui') ||
+                $this->typeMapper->isUIObjectType($baseType)) {
+                return '?\\FFI\\CData';
+            }
+            
+            // Generic void pointer
+            if ($baseType === 'void') {
+                return 'mixed';
+            }
+            
+            // Other pointers
+            return '?\\FFI\\CData';
+        }
+        
+        // Use TypeMapper for basic types
+        return $this->typeMapper->mapCTypeToPhp($cType, false);
     }
 
     /**
@@ -105,7 +234,7 @@ class MethodGenerator
         $paramStrings = [];
         
         foreach ($parameters as $param) {
-            $phpType = $this->typeMapper->mapCTypeToPhp($param['type']);
+            $phpType = $this->mapParameterType($param['type']);
             $paramString = '';
             
             if ($phpType !== 'mixed') {

@@ -36,9 +36,10 @@ class TypeMapper
      * Map C type to PHP type
      *
      * @param string $cType C type name
+     * @param bool $allowNull Whether the type can be null
      * @return string PHP type name
      */
-    public function mapCTypeToPhp(string $cType): string
+    public function mapCTypeToPhp(string $cType, bool $allowNull = false): string
     {
         // Clean up the type (remove extra spaces, etc.)
         $cleanType = trim($cType);
@@ -46,10 +47,26 @@ class TypeMapper
         // Handle pointer types
         if (str_ends_with($cleanType, '*')) {
             $baseType = trim(substr($cleanType, 0, -1));
+            
+            // String types
             if ($baseType === 'char' || $baseType === 'const char') {
-                return 'string';
+                return $allowNull ? '?string' : 'string';
             }
-            return 'mixed'; // Generic pointer type
+            
+            // UI object types (these are FFI CData objects)
+            if (str_starts_with($baseType, 'ui') || 
+                str_starts_with($baseType, 'struct ui') ||
+                $this->isUIObjectType($baseType)) {
+                return $allowNull ? '?\\FFI\\CData' : '\\FFI\\CData';
+            }
+            
+            // Generic void pointer
+            if ($baseType === 'void') {
+                return 'mixed';
+            }
+            
+            // Other pointer types
+            return $allowNull ? '?\\FFI\\CData' : '\\FFI\\CData';
         }
         
         // Handle array types
@@ -59,16 +76,40 @@ class TypeMapper
         
         // Direct mapping
         if (isset($this->typeMap[$cleanType])) {
-            return $this->typeMap[$cleanType];
+            $phpType = $this->typeMap[$cleanType];
+            return $allowNull && $phpType !== 'void' ? "?{$phpType}" : $phpType;
         }
         
         // Handle struct/union types
         if (str_starts_with($cleanType, 'struct ') || str_starts_with($cleanType, 'union ')) {
-            return 'mixed'; // FFI CData object
+            return $allowNull ? '?\\FFI\\CData' : '\\FFI\\CData';
         }
         
         // Default to mixed for unknown types
         return 'mixed';
+    }
+
+    /**
+     * Check if a type is a UI object type
+     *
+     * @param string $baseType Base type name
+     * @return bool True if it's a UI object type
+     */
+    public function isUIObjectType(string $baseType): bool
+    {
+        $uiTypes = [
+            'uiWindow', 'uiButton', 'uiBox', 'uiCheckbox', 'uiEntry', 'uiLabel',
+            'uiTab', 'uiGroup', 'uiSpinbox', 'uiSlider', 'uiProgressBar',
+            'uiSeparator', 'uiCombobox', 'uiEditableCombobox', 'uiRadioButtons',
+            'uiDateTimePicker', 'uiMultilineEntry', 'uiMenuItem', 'uiMenu',
+            'uiArea', 'uiAreaHandler', 'uiDrawPath', 'uiDrawMatrix', 'uiAttribute',
+            'uiAttributedString', 'uiOpenTypeFeatures', 'uiFontDescriptor',
+            'uiDrawTextLayout', 'uiFontButton', 'uiColorButton', 'uiForm',
+            'uiGrid', 'uiImage', 'uiTableValue', 'uiTableModel', 'uiTable',
+            'uiTableSelection', 'uiControl'
+        ];
+        
+        return in_array($baseType, $uiTypes);
     }
 
     /**
