@@ -1,0 +1,78 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * C-to-PHP FFI Converter
+ * 
+ * A tool for generating PHP FFI wrapper classes from C projects.
+ * 
+ * @author Yang Weijie <917647288@qq.com>
+ * @license MIT
+ */
+
+// Check PHP version
+if (version_compare(PHP_VERSION, '8.1.0', '<')) {
+    fwrite(STDERR, "Error: PHP 8.1.0 or higher is required. Current version: " . PHP_VERSION . "\n");
+    exit(1);
+}
+
+// Check FFI extension
+if (!extension_loaded('ffi')) {
+    fwrite(STDERR, "Error: FFI extension is not loaded. Please enable the FFI extension in your php.ini.\n");
+    fwrite(STDERR, "Add the following lines to your php.ini:\n");
+    fwrite(STDERR, "extension=ffi\n");
+    fwrite(STDERR, "ffi.enable=true\n");
+    exit(1);
+}
+
+// Find the autoloader
+$autoloadPaths = [
+    __DIR__ . '/../vendor/autoload.php',        // Local installation
+    __DIR__ . '/../../../autoload.php',        // Global installation
+    __DIR__ . '/../../../../autoload.php',     // Nested vendor installation
+];
+
+$autoloadPath = null;
+foreach ($autoloadPaths as $path) {
+    if (file_exists($path)) {
+        $autoloadPath = $path;
+        break;
+    }
+}
+
+if ($autoloadPath === null) {
+    fwrite(STDERR, "Error: Could not find Composer autoloader.\n");
+    fwrite(STDERR, "Please ensure you have run 'composer install' or installed the package correctly.\n");
+    fwrite(STDERR, "Searched paths:\n");
+    foreach ($autoloadPaths as $path) {
+        fwrite(STDERR, "  - $path\n");
+    }
+    exit(1);
+}
+
+require_once $autoloadPath;
+
+use Yangweijie\CWrapper\Console\Application;
+use Yangweijie\CWrapper\Exception\FFIConverterException;
+
+try {
+    // Create and run the application
+    $application = new Application();
+    $exitCode = $application->run();
+    exit($exitCode);
+} catch (FFIConverterException $e) {
+    fwrite(STDERR, "Error: " . $e->getMessage() . "\n");
+    if (getenv('DEBUG') === '1') {
+        fwrite(STDERR, "Stack trace:\n" . $e->getTraceAsString() . "\n");
+    }
+    exit(1);
+} catch (Throwable $e) {
+    fwrite(STDERR, "Unexpected error: " . $e->getMessage() . "\n");
+    fwrite(STDERR, "Please report this issue at: https://github.com/yangweijie/c-to-php-ffi-converter/issues\n");
+    if (getenv('DEBUG') === '1') {
+        fwrite(STDERR, "Stack trace:\n" . $e->getTraceAsString() . "\n");
+    }
+    exit(1);
+}

@@ -1,0 +1,73 @@
+{
+    "name": "yangweijie/c-to-php-ffi-converter",
+    "description": "A PHP tool that automatically generates PHP FFI wrapper classes from C projects using klitsche/ffigen. Provides object-oriented wrappers with validation, error handling, and comprehensive documentation.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["php", "ffi", "c", "wrapper", "generator", "bindings", "interop"],
+    "homepage": "https://github.com/yangweijie/c-to-php-ffi-converter",
+    "support": {
+        "issues": "https://github.com/yangweijie/c-to-php-ffi-converter/issues",
+        "source": "https://github.com/yangweijie/c-to-php-ffi-converter"
+    },
+    "autoload": {
+        "psr-4": {
+            "Yangweijie\\CWrapper\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Yangweijie\\CWrapper\\Tests\\": "tests/"
+        }
+    },
+    "authors": [
+        {
+            "name": "jay",
+            "email": "917647288@qq.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "require": {
+        "php": "^8.1",
+        "klitsche/ffigen": "^0.8.1",
+        "symfony/console": "^5.0|^6.0|^7.0",
+        "symfony/yaml": "^5.0|^6.0|^7.0",
+        "twig/twig": "^3.0",
+        "phpstan/phpdoc-parser": "^1.0",
+        "psr/log": "^1.0|^2.0|^3.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0",
+        "mockery/mockery": "^1.5",
+        "mikey179/vfsstream": "^1.6",
+        "phpstan/phpstan": "^1.0",
+        "squizlabs/php_codesniffer": "^3.7"
+    },
+    "bin": [
+        "bin/c-to-php-ffi"
+    ],
+    "scripts": {
+        "test": "phpunit",
+        "test:unit": "phpunit tests/Unit",
+        "test:integration": "phpunit tests/Integration",
+        "phpstan": "phpstan analyse src tests --level=8",
+        "cs-check": "phpcs src tests --standard=PSR12",
+        "cs-fix": "phpcbf src tests --standard=PSR12",
+        "quality": [
+            "@cs-check",
+            "@phpstan",
+            "@test"
+        ]
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "composer/package-versions-deprecated": true
+        }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "1.0-dev"
+        }
+    }
+}

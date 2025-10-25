@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.0/phpunit.xsd"
+         bootstrap="../../../vendor/autoload.php"
+         colors="true"
+         verbose="true"
+         failOnRisky="true"
+         failOnWarning="true"
+         convertErrorsToExceptions="true"
+         convertNoticesToExceptions="true"
+         convertWarningsToExceptions="true"
+         processIsolation="false"
+         stopOnFailure="false"
+         executionOrder="depends,defects"
+         resolveDependencies="true">
+
+    <testsuites>
+        <testsuite name="End-to-End Tests">
+            <directory>.</directory>
+        </testsuite>
+    </testsuites>
+
+    <groups>
+        <include>
+            <group>e2e</group>
+        </include>
+    </groups>
+
+    <coverage processUncoveredFiles="true">
+        <include>
+            <directory suffix=".php">../../../src</directory>
+        </include>
+        <exclude>
+            <directory>../../../vendor</directory>
+            <directory>../../../tests</directory>
+        </exclude>
+    </coverage>
+
+    <logging>
+        <junit outputFile="../../output/e2e-junit.xml"/>
+        <testdoxHtml outputFile="../../output/e2e-testdox.html"/>
+    </logging>
+
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <env name="FIXTURES_DIR" value="../../Fixtures"/>
+        <env name="OUTPUT_DIR" value="../../output"/>
+    </php>
+
+</phpunit>

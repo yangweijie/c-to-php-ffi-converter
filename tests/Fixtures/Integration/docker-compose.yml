@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  integration-test:
+    build:
+      context: ../../../  # Build from project root
+      dockerfile: tests/Fixtures/Integration/Dockerfile
+    volumes:
+      - ../../../:/app  # Mount project root
+      - ./lib:/app/lib  # Mount library output directory
+    environment:
+      - LD_LIBRARY_PATH=/app/lib:/app/tests/Fixtures/Integration
+      - PHP_FFI_PRELOAD=/app/tests/Fixtures/Integration/*.h
+    working_dir: /app
+    command: /app/test_integration.sh
+
+  # Service for interactive development and debugging
+  integration-dev:
+    build:
+      context: ../../../
+      dockerfile: tests/Fixtures/Integration/Dockerfile
+    volumes:
+      - ../../../:/app
+      - ./lib:/app/lib
+    environment:
+      - LD_LIBRARY_PATH=/app/lib:/app/tests/Fixtures/Integration
+      - PHP_FFI_PRELOAD=/app/tests/Fixtures/Integration/*.h
+    working_dir: /app
+    command: /bin/bash
+    stdin_open: true
+    tty: true
+
+  # Service for building libraries only
+  build-libs:
+    build:
+      context: ../../../
+      dockerfile: tests/Fixtures/Integration/Dockerfile
+    volumes:
+      - ../../../:/app
+      - ./lib:/app/lib
+    working_dir: /app/tests/Fixtures/Integration
+    command: make all install

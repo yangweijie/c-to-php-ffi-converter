@@ -1,0 +1,16 @@
+headerFiles:
+  - "tests/Fixtures/Integration/math_library.h"
+libraryFile: "tests/Fixtures/Integration/libmath_library.so"
+outputPath: "./test_output/math"
+namespace: "Test\\Math\\FFI"
+excludePatterns: []
+validation:
+  enableParameterValidation: true
+  enableTypeConversion: true
+  customValidationRules:
+    - type: "int*"
+      rule: "not_null"
+    - type: "size_t"
+      rule: "positive"
+    - type: "double"
+      rule: "finite"

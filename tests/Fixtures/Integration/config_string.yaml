@@ -1,0 +1,16 @@
+headerFiles:
+  - "tests/Fixtures/Integration/string_utils.h"
+libraryFile: "tests/Fixtures/Integration/libstring_utils.so"
+outputPath: "./test_output/string"
+namespace: "Test\\String\\FFI"
+excludePatterns: []
+validation:
+  enableParameterValidation: true
+  enableTypeConversion: true
+  customValidationRules:
+    - type: "char*"
+      rule: "not_null"
+    - type: "const char*"
+      rule: "not_null"
+    - type: "size_t"
+      rule: "positive"

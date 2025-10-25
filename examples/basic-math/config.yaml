@@ -1,0 +1,38 @@
+# Configuration for Basic Math Library Example
+
+# Header files to process
+header_files:
+  - src/math.h
+
+# Shared library file (will be created by make)
+library_file: ./libmath.so
+
+# Output directory for generated PHP files
+output_path: ./generated
+
+# PHP namespace for generated classes
+namespace: BasicMath
+
+# Validation settings
+validation:
+  enable_parameter_validation: true
+  enable_type_conversion: true
+  custom_validation_rules:
+    - name: "division_by_zero"
+      function: "divide"
+      parameter: "b"
+      rule: "not_zero"
+
+# Generation settings
+generation:
+  generate_documentation: true
+  generate_examples: true
+  include_phpdoc: true
+
+# Exclusion patterns (none needed for this simple example)
+exclude_patterns: []
+
+# Additional configuration
+ffigen:
+  # Pass additional options to klitsche/ffigen if needed
+  additional_options: []

@@ -1,0 +1,10 @@
+headerFiles:
+  - "tests/Fixtures/sample.h"
+libraryFile: ""
+outputPath: "./test_output"
+namespace: "Test\\FFI"
+excludePatterns: []
+validation:
+  enableParameterValidation: true
+  enableTypeConversion: true
+  customValidationRules: []

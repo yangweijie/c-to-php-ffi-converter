@@ -1,0 +1,27 @@
+# Example configuration file for C-to-PHP FFI Converter
+
+# Header files to process
+header_files:
+  - "path/to/header.h"
+  - "path/to/another.h"
+
+# Library file to link against
+library_file: "path/to/library.so"
+
+# Output directory for generated wrapper classes
+output_path: "generated/"
+
+# Namespace for generated classes
+namespace: "MyProject\\FFI"
+
+# Validation settings
+validation:
+  enable_parameter_validation: true
+  enable_type_conversion: true
+  custom_validation_rules: []
+
+# Generation settings
+generation:
+  include_documentation: true
+  include_examples: true
+  code_style: "PSR-12"

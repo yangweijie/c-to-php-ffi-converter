@@ -1,0 +1,38 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Source code
+*.php text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.xml text eol=lf
+
+# Documentation
+*.md text eol=lf
+*.txt text eol=lf
+
+# Configuration files
+.gitignore text eol=lf
+.gitattributes text eol=lf
+composer.json text eol=lf
+composer.lock text eol=lf
+
+# Exclude files from distribution
+/.github export-ignore
+/.gitattributes export-ignore
+/.gitignore export-ignore
+/tests export-ignore
+/phpunit.xml export-ignore
+/.phpunit.cache export-ignore
+/docs export-ignore
+/examples export-ignore
+/workspace export-ignore
+/.kiro export-ignore
+
+# Binary files
+*.so binary
+*.dll binary
+*.dylib binary
+*.a binary
+*.o binary
