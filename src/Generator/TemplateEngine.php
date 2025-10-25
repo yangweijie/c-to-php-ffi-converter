@@ -245,8 +245,6 @@ use FFI;
  */
 class {{ class.name }}
 {
-    private FFI $ffi;
-
 {% if class.constants %}
 {% for name, value in class.constants %}
     public const {{ name|constant_name }} = {{ value|constant_value }};
@@ -257,9 +255,14 @@ class {{ class.name }}
 {{ property|raw }}
 {% endfor %}
 
-    public function __construct()
+    /**
+     * Get FFI instance from Bootstrap
+     *
+     * @return FFI FFI instance
+     */
+    protected static function getFFI(): FFI
     {
-        $this->ffi = FFI::cdef('', '{{ library_path }}');
+        return Bootstrap::getFFI();
     }
 
 {% for method in class.methods %}
@@ -342,15 +345,15 @@ TWIG;
      * @return {{ php_type(method.return_type) }}
 {% endif %}
      */
-    public function {{ method.name|method_name }}({% for param in method.parameters %}{{ php_type(param.type) }} ${{ param.name }}{% if not loop.last %}, {% endif %}{% endfor %}){% if method.return_type != 'void' %}: {{ php_type(method.return_type) }}{% endif %}
+    public static function {{ method.name|method_name }}({% for param in method.parameters %}{{ php_type(param.type) }} ${{ param.name }}{% if not loop.last %}, {% endif %}{% endfor %}){% if method.return_type != 'void' %}: {{ php_type(method.return_type) }}{% endif %}
     {
 {% for param in method.parameters %}
 {{ validation_code(param.name, param.type)|raw }}
 {% endfor %}
 {% if method.return_type != 'void' %}
-        return $this->ffi->{{ method.name }}({% for param in method.parameters %} ${{ param.name }}{% if not loop.last %}, {% endif %}{% endfor %});
+        return static::getFFI()->{{ method.name }}({% for param in method.parameters %} ${{ param.name }}{% if not loop.last %}, {% endif %}{% endfor %});
 {% else %}
-        $this->ffi->{{ method.name }}({% for param in method.parameters %} ${{ param.name }}{% if not loop.last %}, {% endif %}{% endfor %});
+        static::getFFI()->{{ method.name }}({% for param in method.parameters %} ${{ param.name }}{% if not loop.last %}, {% endif %}{% endfor %});
 {% endif %}
     }
 TWIG;

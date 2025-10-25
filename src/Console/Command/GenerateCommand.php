@@ -303,7 +303,7 @@ class GenerateCommand extends Command implements CommandInterface
             $io->writeln('🏗️  Generating wrapper classes...');
             $wrapperGenerator = new WrapperGenerator();
             
-            $generatedCode = $wrapperGenerator->generate($processedBindings);
+            $generatedCode = $wrapperGenerator->generate($processedBindings, $projectConfig);
             
             $io->writeln(sprintf('   Generated %d wrapper classes', count($generatedCode->classes)));
             
@@ -330,7 +330,6 @@ class GenerateCommand extends Command implements CommandInterface
     private function writeGeneratedFiles($generatedCode, ProjectConfig $projectConfig, SymfonyStyle $io): int
     {
         $outputPath = $projectConfig->getOutputPath();
-        $libraryFile = $projectConfig->getLibraryFile();
         $filesWritten = 0;
         
         // Ensure output directory exists
@@ -338,16 +337,15 @@ class GenerateCommand extends Command implements CommandInterface
             mkdir($outputPath, 0755, true);
         }
         
-        // Write each generated class
-        foreach ($generatedCode->classes as $class) {
-            $filename = $this->getClassFilename($class->name);
+        // Generate all code files using WrapperGenerator
+        $wrapperGenerator = new WrapperGenerator();
+        $codeFiles = $wrapperGenerator->generateCodeFiles($generatedCode, $projectConfig);
+        
+        // Write each generated file
+        foreach ($codeFiles as $filename => $content) {
             $filepath = $outputPath . '/' . $filename;
             
-            // Generate the complete class code
-            $classGenerator = new \Yangweijie\CWrapper\Generator\ClassGenerator();
-            $classCode = $classGenerator->generateClassCode($class, $libraryFile);
-            
-            file_put_contents($filepath, $classCode);
+            file_put_contents($filepath, $content);
             $filesWritten++;
             
             if ($io->isVerbose()) {

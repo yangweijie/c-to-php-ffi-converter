@@ -145,7 +145,7 @@ class MethodGenerator
     private function generateFFICall(FunctionSignature $function): string
     {
         $paramList = $this->generateParameterList($function->parameters);
-        return "\$this->ffi->{$function->name}({$paramList})";
+        return "static::getFFI()->{$function->name}({$paramList})";
     }
 
     /**

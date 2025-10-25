@@ -189,3 +189,28 @@
     - Write comprehensive user documentation
     - Add troubleshooting guide and FAQ
     - _Requirements: 5.3, 5.4, 5.5_
+
+- [ ] 12. Improve code generation quality and semantic grouping
+  - [ ] 12.1 Implement semantic function grouping logic
+    - Replace simple prefix matching with semantic analysis
+    - Group functions by UI component (Button, Window, Menu, etc.)
+    - Create meaningful class names (UiButton, UiWindow, UiMenu)
+    - _Requirements: 1.2, 1.3, 1.4, 2.3, 2.4_
+
+  - [ ] 12.2 Create bootstrap/configuration class
+    - Generate Bootstrap class with library path configuration
+    - Implement centralized FFI instance management
+    - Remove hardcoded library paths from individual classes
+    - _Requirements: 1.2, 2.3, 2.4_
+
+  - [ ] 12.3 Fix namespace consistency
+    - Use consistent namespace throughout generated code
+    - Apply user-specified namespace (kingbes\Libui) instead of Generated\Wrapper
+    - Update all generated classes to use proper namespace
+    - _Requirements: 1.2, 1.3, 1.4_
+
+  - [ ] 12.4 Optimize class structure
+    - Combine related methods into single classes instead of one-method classes
+    - Generate object-oriented API (create(), setText(), getText() methods)
+    - Improve method naming and organization
+    - _Requirements: 1.2, 1.3, 1.4, 2.3, 2.4_
