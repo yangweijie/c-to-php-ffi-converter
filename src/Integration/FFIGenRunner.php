@@ -45,19 +45,49 @@ class FFIGenRunner
             
             // Check if execution was successful
             if (!$process->isSuccessful()) {
+                $errors = [];
+                if ($process->getErrorOutput()) {
+                    $errors[] = 'Error output: ' . $process->getErrorOutput();
+                }
+                if ($process->getOutput()) {
+                    $errors[] = 'Standard output: ' . $process->getOutput();
+                }
+                $errors[] = 'Exit code: ' . $process->getExitCode();
+                
                 return new BindingResult(
                     '',
                     '',
                     false,
-                    [$process->getErrorOutput()]
+                    $errors
+                );
+            }
+            
+            // Check if expected files were actually generated
+            $outputPath = $config->getOutputPath();
+            $constantsFile = $outputPath . '/constants.php';
+            $methodsFile = $outputPath . '/Methods.php';
+            
+            if (!file_exists($constantsFile) || !file_exists($methodsFile)) {
+                $errors = ['Generated files not found'];
+                if ($process->getOutput()) {
+                    $errors[] = 'FFIGen output: ' . $process->getOutput();
+                }
+                if ($process->getErrorOutput()) {
+                    $errors[] = 'FFIGen error: ' . $process->getErrorOutput();
+                }
+                
+                return new BindingResult(
+                    $constantsFile,
+                    $methodsFile,
+                    false,
+                    $errors
                 );
             }
             
             // Return successful result with file paths
-            $outputPath = $config->getOutputPath();
             return new BindingResult(
-                $outputPath . '/constants.php',
-                $outputPath . '/Methods.php',
+                $constantsFile,
+                $methodsFile,
                 true
             );
             
@@ -79,15 +109,11 @@ class FFIGenRunner
      */
     private function createTemporaryConfigFile(ConfigInterface $config): string
     {
-        $yamlConfig = $this->configBuilder->buildYamlConfiguration($config);
-        
-        $tempFile = tempnam(sys_get_temp_dir(), 'ffigen_config_') . '.yaml';
-        
-        if ($tempFile === false || file_put_contents($tempFile, $yamlConfig) === false) {
-            throw new GenerationException('Failed to create temporary configuration file');
+        try {
+            return $this->configBuilder->writeTemporaryConfigFile($config);
+        } catch (\Exception $e) {
+            throw new GenerationException('Failed to create temporary configuration file: ' . $e->getMessage(), 0, $e);
         }
-        
-        return $tempFile;
     }
 
     /**
@@ -114,13 +140,12 @@ class FFIGenRunner
     {
         // Try different possible FFIGen executable locations
         $possibleCommands = [
-            ['vendor/bin/ffigen', $configFile],
-            ['./vendor/bin/ffigen', $configFile],
-            ['ffigen', $configFile],
-            ['php', 'vendor/bin/ffigen', $configFile],
+            ['vendor/bin/ffigen', 'generate', '-c', $configFile],
+            ['./vendor/bin/ffigen', 'generate', '-c', $configFile],
+            ['php', 'vendor/bin/ffigen', 'generate', '-c', $configFile],
         ];
         
-        $lastException = null;
+        $lastError = '';
         
         foreach ($possibleCommands as $command) {
             try {
@@ -128,17 +153,18 @@ class FFIGenRunner
                 $process->setTimeout(300); // 5 minutes timeout
                 $process->run();
                 
+                // Return the process regardless of success/failure
+                // The caller will check isSuccessful()
                 return $process;
-            } catch (ProcessFailedException $e) {
-                $lastException = $e;
+                
+            } catch (\Exception $e) {
+                $lastError = $e->getMessage();
                 continue;
             }
         }
         
         throw new GenerationException(
-            'Could not execute klitsche/ffigen. Make sure it is installed via Composer.',
-            0,
-            $lastException
+            'Could not execute klitsche/ffigen. Make sure it is installed via Composer. Last error: ' . $lastError
         );
     }
 }

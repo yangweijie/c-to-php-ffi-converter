@@ -31,7 +31,7 @@ class HeaderAnalyzerTest extends TestCase
 
         // Check functions
         $functions = $result->functions;
-        $this->assertCount(2, $functions);
+        $this->assertCount(4, $functions);
 
         // Check add function
         $addFunction = $functions[0];
@@ -44,15 +44,31 @@ class HeaderAnalyzerTest extends TestCase
         $this->assertEquals('b', $addFunction->parameters[1]['name']);
         $this->assertEquals('int', $addFunction->parameters[1]['type']);
 
-        // Check process_array function
-        $processFunction = $functions[1];
-        $this->assertEquals('process_array', $processFunction->name);
-        $this->assertEquals('void', $processFunction->returnType);
-        $this->assertCount(2, $processFunction->parameters);
-        $this->assertEquals('arr', $processFunction->parameters[0]['name']);
-        $this->assertEquals('int*', $processFunction->parameters[0]['type']);
-        $this->assertEquals('length', $processFunction->parameters[1]['name']);
-        $this->assertEquals('size_t', $processFunction->parameters[1]['type']);
+        // Check multiply function
+        $multiplyFunction = $functions[1];
+        $this->assertEquals('multiply', $multiplyFunction->name);
+        $this->assertEquals('double', $multiplyFunction->returnType);
+        $this->assertCount(2, $multiplyFunction->parameters);
+        $this->assertEquals('x', $multiplyFunction->parameters[0]['name']);
+        $this->assertEquals('double', $multiplyFunction->parameters[0]['type']);
+        $this->assertEquals('y', $multiplyFunction->parameters[1]['name']);
+        $this->assertEquals('double', $multiplyFunction->parameters[1]['type']);
+
+        // Check get_version function
+        $getVersionFunction = $functions[2];
+        $this->assertEquals('get_version', $getVersionFunction->name);
+        $this->assertEquals('char*', $getVersionFunction->returnType);
+        $this->assertEmpty($getVersionFunction->parameters);
+
+        // Check distance function
+        $distanceFunction = $functions[3];
+        $this->assertEquals('distance', $distanceFunction->name);
+        $this->assertEquals('double', $distanceFunction->returnType);
+        $this->assertCount(2, $distanceFunction->parameters);
+        $this->assertEquals('p1', $distanceFunction->parameters[0]['name']);
+        $this->assertEquals('Point', $distanceFunction->parameters[0]['type']);
+        $this->assertEquals('p2', $distanceFunction->parameters[1]['name']);
+        $this->assertEquals('Point', $distanceFunction->parameters[1]['type']);
 
         // Check structures
         $structures = $result->structures;
@@ -71,7 +87,7 @@ class HeaderAnalyzerTest extends TestCase
         // Check constants
         $constants = $result->constants;
         $this->assertCount(2, $constants);
-        $this->assertEquals(1024, $constants['MAX_SIZE']);
+        $this->assertEquals(1024, $constants['MAX_BUFFER_SIZE']);
         $this->assertEquals(3.14159, $constants['PI']);
 
         // Check dependencies

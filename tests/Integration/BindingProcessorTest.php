@@ -50,17 +50,17 @@ trait Methods {
      * @param int $b Second number
      * @return int Sum of the numbers
      */
-    public function add(int $a, int $b): int
+    public static function add(int $a, int $b): int
     {
-        return $this->ffi->add($a, $b);
+        return static::getFFI()->add($a, $b);
     }
 
     /**
      * Process an array
      */
-    public function process_array(?CData $arr, int $length): void
+    public static function process_array(?\FFI\CData $arr, int $length): void
     {
-        $this->ffi->process_array($arr, $length);
+        static::getFFI()->process_array($arr, $length);
     }
 }';
         file_put_contents($methodsFile, $methodsContent);

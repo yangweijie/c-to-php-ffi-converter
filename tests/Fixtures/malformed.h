@@ -1,22 +1,23 @@
+/* Malformed C header file for testing */
 #ifndef MALFORMED_H
 #define MALFORMED_H
 
-// This header has intentional syntax errors for testing error handling
-
 // Missing semicolon
-int broken_function(int a, int b)
+int broken_function(int param)
 
-// Incomplete struct
-typedef struct {
-    int x;
-    // Missing closing brace
+// Unmatched braces
+struct broken_struct {
+    int field1;
+    // missing closing brace
 
-// Invalid define
-#define INVALID_DEFINE 
+// Invalid preprocessor directive
+#invalid_directive
 
-// Unclosed comment
-/* This comment is not closed
+// Valid content mixed with broken content
+#define VALID_CONSTANT 42
+int valid_function(int param);
 
-int another_function(void);
+// Incomplete typedef
+typedef struct incomplete_struct
 
-#endif // MALFORMED_H
+#endif

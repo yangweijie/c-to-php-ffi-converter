@@ -16,6 +16,10 @@ use Yangweijie\CWrapper\Config\ProjectConfig;
 use Yangweijie\CWrapper\Config\ValidationConfig;
 use Yangweijie\CWrapper\Exception\ConfigurationException;
 use Yangweijie\CWrapper\Exception\ValidationException;
+use Yangweijie\CWrapper\Integration\FFIGenIntegration;
+use Yangweijie\CWrapper\Generator\WrapperGenerator;
+use Yangweijie\CWrapper\Analyzer\HeaderAnalyzer;
+use Yangweijie\CWrapper\Analyzer\DependencyResolver;
 
 /**
  * Main command for generating PHP FFI wrapper classes from C projects
@@ -99,11 +103,19 @@ class GenerateCommand extends Command implements CommandInterface
             // Display configuration summary
             $this->displayConfiguration($projectConfig, $io);
             
-            // TODO: Implement actual generation logic in future tasks
-            $io->success('Configuration validated successfully!');
-            $io->note('Generation logic will be implemented in upcoming tasks.');
+            // Execute the generation process
+            $io->section('Generating FFI Wrapper Classes');
             
-            return Command::SUCCESS;
+            $result = $this->executeGeneration($projectConfig, $io);
+            
+            if ($result) {
+                $io->success('FFI wrapper classes generated successfully!');
+                $io->writeln("Generated files in: {$projectConfig->getOutputPath()}");
+                return Command::SUCCESS;
+            } else {
+                $io->error('Generation failed. Please check the error messages above.');
+                return Command::FAILURE;
+            }
             
         } catch (ConfigurationException $e) {
             $io->error('Configuration Error: ' . $e->getMessage());
@@ -207,9 +219,10 @@ class GenerateCommand extends Command implements CommandInterface
             throw new ConfigurationException("Output directory not writable: {$outputDir}");
         }
 
-        // Validate library file if provided
+        // Validate library file if provided (warn if not found but don't fail)
         if ($libraryFile && !file_exists($libraryFile)) {
-            throw new ConfigurationException("Library file not found: {$libraryFile}");
+            $io->warning("Library file not found: {$libraryFile}");
+            $io->writeln("Note: The library file will be referenced in generated code but not validated at generation time.");
         }
 
         // Validate namespace format
@@ -241,5 +254,126 @@ class GenerateCommand extends Command implements CommandInterface
             ['Parameter Validation' => $validationConfig->isParameterValidationEnabled() ? 'Enabled' : 'Disabled'],
             ['Type Conversion' => $validationConfig->isTypeConversionEnabled() ? 'Enabled' : 'Disabled']
         );
+    }
+
+    /**
+     * Execute the actual generation process
+     */
+    private function executeGeneration(ProjectConfig $projectConfig, SymfonyStyle $io): bool
+    {
+        try {
+            // Step 1: Analyze header files
+            $io->writeln('📋 Analyzing header files...');
+            $headerAnalyzer = new HeaderAnalyzer();
+            $dependencyResolver = new DependencyResolver();
+            
+            // Resolve dependencies and create compilation order
+            $headerFiles = $projectConfig->getHeaderFiles();
+            $compilationOrder = $dependencyResolver->createCompilationOrder($headerFiles);
+            
+            $io->writeln(sprintf('   Found %d header files to process', count($compilationOrder)));
+            
+            // Step 2: Generate FFI bindings using klitsche/ffigen
+            $io->writeln('🔧 Generating FFI bindings...');
+            $ffiGenIntegration = new FFIGenIntegration();
+            
+            $bindingResult = $ffiGenIntegration->generateBindings($projectConfig);
+            
+            if (!$bindingResult->success) {
+                $io->error('FFI binding generation failed:');
+                foreach ($bindingResult->errors as $error) {
+                    $io->writeln("   • $error");
+                }
+                return false;
+            }
+            
+            $io->writeln('   ✓ FFI bindings generated successfully');
+            
+            // Step 3: Process bindings
+            $io->writeln('⚙️  Processing bindings...');
+            $processedBindings = $ffiGenIntegration->processBindings($bindingResult);
+            
+            $io->writeln(sprintf('   Found %d functions, %d structures, %d constants', 
+                count($processedBindings->functions),
+                count($processedBindings->structures), 
+                count($processedBindings->constants)
+            ));
+            
+            // Step 4: Generate wrapper classes
+            $io->writeln('🏗️  Generating wrapper classes...');
+            $wrapperGenerator = new WrapperGenerator();
+            
+            $generatedCode = $wrapperGenerator->generate($processedBindings);
+            
+            $io->writeln(sprintf('   Generated %d wrapper classes', count($generatedCode->classes)));
+            
+            // Step 5: Write generated files
+            $io->writeln('💾 Writing generated files...');
+            $filesWritten = $this->writeGeneratedFiles($generatedCode, $projectConfig, $io);
+            
+            $io->writeln(sprintf('   ✓ Written %d files', $filesWritten));
+            
+            return true;
+            
+        } catch (\Throwable $e) {
+            $io->error('Generation failed: ' . $e->getMessage());
+            if ($io->isVerbose()) {
+                $io->writeln($e->getTraceAsString());
+            }
+            return false;
+        }
+    }
+
+    /**
+     * Write generated files to disk
+     */
+    private function writeGeneratedFiles($generatedCode, ProjectConfig $projectConfig, SymfonyStyle $io): int
+    {
+        $outputPath = $projectConfig->getOutputPath();
+        $libraryFile = $projectConfig->getLibraryFile();
+        $filesWritten = 0;
+        
+        // Ensure output directory exists
+        if (!is_dir($outputPath)) {
+            mkdir($outputPath, 0755, true);
+        }
+        
+        // Write each generated class
+        foreach ($generatedCode->classes as $class) {
+            $filename = $this->getClassFilename($class->name);
+            $filepath = $outputPath . '/' . $filename;
+            
+            // Generate the complete class code
+            $classGenerator = new \Yangweijie\CWrapper\Generator\ClassGenerator();
+            $classCode = $classGenerator->generateClassCode($class, $libraryFile);
+            
+            file_put_contents($filepath, $classCode);
+            $filesWritten++;
+            
+            if ($io->isVerbose()) {
+                $io->writeln("   • $filename");
+            }
+        }
+        
+        // Write documentation if available
+        if (isset($generatedCode->documentation)) {
+            $readmePath = $outputPath . '/README.md';
+            file_put_contents($readmePath, $generatedCode->documentation->readme ?? '# Generated FFI Wrapper Classes');
+            $filesWritten++;
+            
+            if ($io->isVerbose()) {
+                $io->writeln("   • README.md");
+            }
+        }
+        
+        return $filesWritten;
+    }
+
+    /**
+     * Get filename for a class
+     */
+    private function getClassFilename(string $className): string
+    {
+        return $className . '.php';
     }
 }

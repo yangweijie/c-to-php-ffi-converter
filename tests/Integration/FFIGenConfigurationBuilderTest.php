@@ -41,20 +41,20 @@ class FFIGenConfigurationBuilderTest extends TestCase
         $result = $this->builder->buildConfiguration($config);
 
         $this->assertIsArray($result);
-        $this->assertArrayHasKey('headers', $result);
-        $this->assertArrayHasKey('library', $result);
-        $this->assertArrayHasKey('output', $result);
+        $this->assertArrayHasKey('headerFiles', $result);
+        $this->assertArrayHasKey('libraryFile', $result);
+        $this->assertArrayHasKey('outputPath', $result);
         $this->assertArrayHasKey('namespace', $result);
 
         // Check that the header file path is included (may be resolved to realpath)
         $expectedPath = __DIR__ . '/../Fixtures/sample.h';
         $this->assertTrue(
-            in_array($expectedPath, $result['headers']) || 
-            in_array(realpath($expectedPath), $result['headers']),
+            in_array($expectedPath, $result['headerFiles']) || 
+            in_array(realpath($expectedPath), $result['headerFiles']),
             'Header file path not found in configuration'
         );
-        $this->assertEquals('/path/to/library.so', $result['library']['file']);
-        $this->assertEquals($this->testOutputDir, $result['output']['directory']);
+        $this->assertEquals('/path/to/library.so', $result['libraryFile']);
+        $this->assertEquals($this->testOutputDir, $result['outputPath']);
         $this->assertEquals('Test\\FFI', $result['namespace']);
     }
 
@@ -70,9 +70,12 @@ class FFIGenConfigurationBuilderTest extends TestCase
 
         $result = $this->builder->buildConfiguration($config);
 
-        $this->assertArrayHasKey('exclude', $result);
-        $this->assertContains('*_internal.h', $result['exclude']);
-        $this->assertContains('test_*.h', $result['exclude']);
+        $this->assertArrayHasKey('excludeConstants', $result);
+        $this->assertArrayHasKey('excludeMethods', $result);
+        $this->assertContains('*_internal.h', $result['excludeConstants']);
+        $this->assertContains('test_*.h', $result['excludeConstants']);
+        $this->assertContains('*_internal.h', $result['excludeMethods']);
+        $this->assertContains('test_*.h', $result['excludeMethods']);
     }
 
     public function testBuildYamlConfiguration(): void
@@ -87,9 +90,9 @@ class FFIGenConfigurationBuilderTest extends TestCase
         $yaml = $this->builder->buildYamlConfiguration($config);
 
         $this->assertIsString($yaml);
-        $this->assertStringContainsString('headers:', $yaml);
-        $this->assertStringContainsString('library:', $yaml);
-        $this->assertStringContainsString('output:', $yaml);
+        $this->assertStringContainsString('headerFiles:', $yaml);
+        $this->assertStringContainsString('libraryFile:', $yaml);
+        $this->assertStringContainsString('outputPath:', $yaml);
         $this->assertStringContainsString('namespace:', $yaml);
         $this->assertStringContainsString('sample.h', $yaml);
         $this->assertStringContainsString('/path/to/library.so', $yaml);
@@ -153,6 +156,30 @@ class FFIGenConfigurationBuilderTest extends TestCase
         $this->expectExceptionMessage('Namespace must be specified');
 
         $this->builder->buildConfiguration($config);
+    }
+
+    public function testWriteTemporaryConfigFile(): void
+    {
+        $config = new ProjectConfig(
+            headerFiles: [__DIR__ . '/../Fixtures/sample.h'],
+            libraryFile: '/path/to/library.so',
+            outputPath: $this->testOutputDir,
+            namespace: 'Test\\FFI'
+        );
+
+        $tempFile = $this->builder->writeTemporaryConfigFile($config);
+
+        $this->assertFileExists($tempFile);
+        $this->assertStringEndsWith('.yml', $tempFile);
+        
+        $content = file_get_contents($tempFile);
+        $this->assertStringContainsString('headerFiles:', $content);
+        $this->assertStringContainsString('libraryFile:', $content);
+        $this->assertStringContainsString('outputPath:', $content);
+        $this->assertStringContainsString('namespace:', $content);
+        
+        // Clean up
+        unlink($tempFile);
     }
 
     private function removeDirectory(string $dir): void

@@ -1,24 +1,31 @@
+/* Sample C header file for testing */
 #ifndef SAMPLE_H
 #define SAMPLE_H
 
-/**
- * Sample C header file for testing
- */
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-// Simple function declaration
+/* Simple function declarations */
 int add(int a, int b);
+double multiply(double x, double y);
+char* get_version(void);
 
-// Function with pointer parameter
-void process_array(int* arr, size_t length);
+/* Constants */
+#define MAX_BUFFER_SIZE 1024
+#define PI 3.14159
 
-// Structure definition
+/* Simple struct */
 typedef struct {
     int x;
     int y;
 } Point;
 
-// Constants
-#define MAX_SIZE 1024
-#define PI 3.14159
+/* Function with struct parameter */
+double distance(Point p1, Point p2);
 
-#endif // SAMPLE_H
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* SAMPLE_H */

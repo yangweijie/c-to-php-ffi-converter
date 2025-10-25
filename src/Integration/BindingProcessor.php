@@ -89,8 +89,8 @@ class BindingProcessor
         $functions = [];
         
         // Parse function definitions using regex
-        // Look for patterns like: public function functionName(type $param): returnType
-        $pattern = '/public\s+function\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)\s*:\s*([^{]+)/';
+        // Look for patterns like: public static function functionName(type $param): returnType
+        $pattern = '/public\s+static\s+function\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)\s*:\s*([^{]+)/';
         
         if (preg_match_all($pattern, $content, $matches, PREG_SET_ORDER)) {
             foreach ($matches as $match) {
@@ -193,7 +193,7 @@ class BindingProcessor
         $documentation = [];
         
         // Look for PHPDoc comment before the function
-        $pattern = '/\/\*\*([^*]*(?:\*(?!\/)[^*]*)*)\*\/\s*public\s+function\s+' . preg_quote($functionName, '/') . '/';
+        $pattern = '/\/\*\*([^*]*(?:\*(?!\/)[^*]*)*)\*\/\s*public\s+static\s+function\s+' . preg_quote($functionName, '/') . '/';
         
         if (preg_match($pattern, $content, $matches)) {
             $docContent = $matches[1];
