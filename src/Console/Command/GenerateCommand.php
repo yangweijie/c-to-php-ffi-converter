@@ -356,7 +356,7 @@ class GenerateCommand extends Command implements CommandInterface
         // Write documentation if available
         if (isset($generatedCode->documentation)) {
             $readmePath = $outputPath . '/README.md';
-            file_put_contents($readmePath, $generatedCode->documentation->readme ?? '# Generated FFI Wrapper Classes');
+            file_put_contents($readmePath, $generatedCode->documentation->readmeContent ?? '# Generated FFI Wrapper Classes');
             $filesWritten++;
             
             if ($io->isVerbose()) {

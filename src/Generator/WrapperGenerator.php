@@ -91,13 +91,14 @@ class WrapperGenerator implements GeneratorInterface
             $classes[] = $bootstrapClass;
         }
 
-        // Generate documentation (placeholder for now)
-        $documentation = new Documentation(
-            [],
-            'Auto-generated PHP FFI wrapper classes',
-            []
-        );
+        // Create temporary GeneratedCode object for documentation generation
+        $tempDocumentation = new Documentation([], '', []);
+        $generatedCode = new GeneratedCode($classes, $interfaces, $traits, $tempDocumentation);
+        
+        // Generate proper documentation
+        $documentation = $this->generateDocumentation($generatedCode, $config);
 
+        // Return with proper documentation
         return new GeneratedCode($classes, $interfaces, $traits, $documentation);
     }
 
@@ -525,5 +526,214 @@ class WrapperGenerator implements GeneratorInterface
         $code .= "}\n";
 
         return $code;
+    }
+
+    /**
+     * Generate comprehensive documentation
+     *
+     * @param GeneratedCode $generatedCode Generated code
+     * @param ProjectConfig|null $config Project configuration
+     * @return Documentation Generated documentation
+     */
+    private function generateDocumentation(GeneratedCode $generatedCode, ?ProjectConfig $config = null): Documentation
+    {
+        $readmeContent = $this->generateReadmeContent($generatedCode, $config);
+        $examples = $this->generateUsageExamples($generatedCode, $config);
+        
+        return new Documentation(
+            [], // PHPDoc comments are already in the generated classes
+            $readmeContent,
+            $examples
+        );
+    }
+
+    /**
+     * Generate README content
+     *
+     * @param GeneratedCode $generatedCode Generated code
+     * @param ProjectConfig|null $config Project configuration
+     * @return string README content
+     */
+    private function generateReadmeContent(GeneratedCode $generatedCode, ?ProjectConfig $config = null): string
+    {
+        $namespace = $config ? $config->getNamespace() : 'Generated\\Wrapper';
+        $libraryPath = $config ? $config->getLibraryFile() : 'path/to/your/library';
+        
+        $content = "# Generated FFI Wrapper Classes\n\n";
+        $content .= "This directory contains auto-generated PHP FFI wrapper classes for C library functions.\n\n";
+        
+        // Overview section
+        $content .= "## Overview\n\n";
+        $content .= "These wrapper classes provide a convenient PHP interface to C library functions using PHP's FFI extension.\n";
+        $content .= "The classes are organized by functionality to make them easy to use and understand.\n\n";
+        
+        // Requirements section
+        $content .= "## Requirements\n\n";
+        $content .= "- PHP 8.1 or higher\n";
+        $content .= "- FFI extension enabled\n";
+        $content .= "- The C library file: `{$libraryPath}`\n\n";
+        
+        // Installation section
+        $content .= "## Installation\n\n";
+        $content .= "1. Ensure the FFI extension is enabled in your php.ini:\n";
+        $content .= "   ```ini\n";
+        $content .= "   extension=ffi\n";
+        $content .= "   ffi.enable=true\n";
+        $content .= "   ```\n\n";
+        $content .= "2. Make sure the C library is accessible at the configured path\n\n";
+        
+        // Usage section
+        $content .= "## Usage\n\n";
+        $content .= "### Basic Usage\n\n";
+        $content .= "```php\n";
+        $content .= "<?php\n";
+        $content .= "require_once 'vendor/autoload.php';\n\n";
+        $content .= "use {$namespace}\\Bootstrap;\n\n";
+        $content .= "// Initialize the FFI library\n";
+        $content .= "Bootstrap::initialize();\n\n";
+        $content .= "// Now you can use the wrapper classes\n";
+        $content .= "```\n\n";
+        
+        // Generated classes section
+        $content .= "## Generated Classes\n\n";
+        $content .= "The following wrapper classes have been generated:\n\n";
+        
+        foreach ($generatedCode->classes as $class) {
+            if ($class->name === 'Bootstrap') {
+                $content .= "### {$class->name}\n";
+                $content .= "Centralized FFI management class. Use this to initialize the library.\n\n";
+            } elseif (str_starts_with($class->name, 'Ui')) {
+                $componentName = substr($class->name, 2); // Remove "Ui" prefix
+                $content .= "### {$class->name}\n";
+                $content .= "Wrapper for {$componentName}-related functions.\n\n";
+            } else {
+                $content .= "### {$class->name}\n";
+                $content .= "Wrapper class for related functions.\n\n";
+            }
+        }
+        
+        // Examples section
+        $content .= "## Examples\n\n";
+        $content .= $this->generateExampleUsage($generatedCode, $namespace);
+        
+        // Notes section
+        $content .= "## Important Notes\n\n";
+        $content .= "- Always call `Bootstrap::initialize()` before using any wrapper classes\n";
+        $content .= "- These are auto-generated classes - do not modify them directly\n";
+        $content .= "- All methods are static and thread-safe\n";
+        $content .= "- Memory management is handled automatically by PHP's FFI extension\n\n";
+        
+        // Troubleshooting section
+        $content .= "## Troubleshooting\n\n";
+        $content .= "### FFI Extension Not Found\n";
+        $content .= "Make sure the FFI extension is installed and enabled in your php.ini file.\n\n";
+        $content .= "### Library Not Found\n";
+        $content .= "Verify that the C library file exists at: `{$libraryPath}`\n\n";
+        $content .= "### Runtime Errors\n";
+        $content .= "Check that all function parameters match the expected C types and are not null when required.\n\n";
+        
+        return $content;
+    }
+
+    /**
+     * Generate usage examples
+     *
+     * @param GeneratedCode $generatedCode Generated code
+     * @param ProjectConfig|null $config Project configuration
+     * @return array<string> Usage examples
+     */
+    private function generateUsageExamples(GeneratedCode $generatedCode, ?ProjectConfig $config = null): array
+    {
+        $examples = [];
+        $namespace = $config ? $config->getNamespace() : 'Generated\\Wrapper';
+        
+        // Find UI-related classes for examples
+        $uiClasses = array_filter($generatedCode->classes, fn($class) => str_starts_with($class->name, 'Ui') && $class->name !== 'Ui');
+        
+        if (!empty($uiClasses)) {
+            $examples[] = $this->generateUIExample($uiClasses, $namespace);
+        }
+        
+        return $examples;
+    }
+
+    /**
+     * Generate example usage code
+     *
+     * @param GeneratedCode $generatedCode Generated code
+     * @param string $namespace Namespace
+     * @return string Example code
+     */
+    private function generateExampleUsage(GeneratedCode $generatedCode, string $namespace): string
+    {
+        $example = "### Basic Example\n\n";
+        $example .= "```php\n";
+        $example .= "<?php\n";
+        $example .= "require_once 'vendor/autoload.php';\n\n";
+        $example .= "use {$namespace}\\Bootstrap;\n";
+        
+        // Find some example classes
+        $uiClasses = array_filter($generatedCode->classes, fn($class) => str_starts_with($class->name, 'Ui') && $class->name !== 'Ui');
+        
+        if (!empty($uiClasses)) {
+            $firstClass = reset($uiClasses);
+            $example .= "use {$namespace}\\{$firstClass->name};\n\n";
+            
+            $example .= "// Initialize the FFI library\n";
+            $example .= "Bootstrap::initialize();\n\n";
+            
+            if ($firstClass->name === 'UiWindow') {
+                $example .= "// Create a new window\n";
+                $example .= "\$window = UiWindow::uiNewWindow('My Application', 800, 600, 1);\n\n";
+                $example .= "// Set window title\n";
+                $example .= "UiWindow::uiWindowSetTitle(\$window, 'Updated Title');\n\n";
+                $example .= "// Show the window\n";
+                $example .= "UiWindow::uiWindowShow(\$window);\n";
+            } elseif ($firstClass->name === 'UiButton') {
+                $example .= "// Create a new button\n";
+                $example .= "\$button = UiButton::uiNewButton('Click Me');\n\n";
+                $example .= "// Get button text\n";
+                $example .= "\$text = UiButton::uiButtonText(\$button);\n";
+                $example .= "echo \"Button text: \" . \$text . \"\\n\";\n\n";
+                $example .= "// Set new button text\n";
+                $example .= "UiButton::uiButtonSetText(\$button, 'New Text');\n";
+            } else {
+                $example .= "// Use the {$firstClass->name} class\n";
+                $example .= "// Check the class methods for available functions\n";
+            }
+        } else {
+            $example .= "\n// Initialize the FFI library\n";
+            $example .= "Bootstrap::initialize();\n\n";
+            $example .= "// Use the generated wrapper classes\n";
+            $example .= "// Check individual class files for available methods\n";
+        }
+        
+        $example .= "```\n\n";
+        
+        return $example;
+    }
+
+    /**
+     * Generate UI-specific example
+     *
+     * @param array $uiClasses UI classes
+     * @param string $namespace Namespace
+     * @return string UI example
+     */
+    private function generateUIExample(array $uiClasses, string $namespace): string
+    {
+        $example = "<?php\n";
+        $example .= "require_once 'vendor/autoload.php';\n\n";
+        $example .= "use {$namespace}\\Bootstrap;\n";
+        
+        foreach (array_slice($uiClasses, 0, 3) as $class) {
+            $example .= "use {$namespace}\\{$class->name};\n";
+        }
+        
+        $example .= "\n// Initialize the UI library\n";
+        $example .= "Bootstrap::initialize();\n\n";
+        $example .= "// Your UI code here...\n";
+        
+        return $example;
     }
 }
